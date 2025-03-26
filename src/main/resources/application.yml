@@ -2,7 +2,6 @@ server:
   port: 8123
   servlet:
     context-path: /api
-
 spring:
   application:
     name: yu-picture-backend
@@ -12,10 +11,17 @@ spring:
     url: jdbc:mysql://localhost:3306/yu_picture?useUnicode=true&characterEncoding=utf-8&use
     username: root
     password: 123456
+  redis:
+    host: 192.168.88.129
+    port: 6379
+    password: 123456
+    database: 0
   # 开发更大的文件上传体积
   servlet:
     multipart:
       max-file-size: 10MB
+  profiles:
+    active: local
 mybatis-plus:
   configuration:
     # mybatis 配置
