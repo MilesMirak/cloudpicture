@@ -36,14 +36,14 @@ public class PictureVO implements Serializable {
     private String introduction;
 
     /**
-     * 分类
-     */
-    private String category;
-
-    /**
      * 标签
      */
     private List<String> tags;
+
+    /**
+     * 分类
+     */
+    private String category;
 
     /**
      * 图片体积
