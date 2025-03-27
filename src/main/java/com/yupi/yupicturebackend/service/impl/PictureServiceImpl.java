@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.yupi.yupicturebackend.exception.BusinessException;
 import com.yupi.yupicturebackend.exception.ErrorCode;
 import com.yupi.yupicturebackend.exception.ThrowUtils;
+import com.yupi.yupicturebackend.manager.CosManager;
 import com.yupi.yupicturebackend.manager.FileManager;
 import com.yupi.yupicturebackend.manager.upload.FilePictureUpload;
 import com.yupi.yupicturebackend.manager.upload.PictureUploadTemplate;
@@ -32,6 +33,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -53,6 +55,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     implements PictureService{
+
+
+    @Resource
+    private CosManager cosManager;
 
     @Resource
     private FileManager fileManager;
@@ -117,6 +123,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         //构造要入库的图片信息
         Picture picture = new Picture();
         picture.setUrl(upLoadPictureResult.getUrl());
+        picture.setThumbnailUrl(upLoadPictureResult.getThumbnailUrl());
         //支持外层传递图片名称
         String picName=upLoadPictureResult.getName();
         if (pictureUploadRequest!=null&& StrUtil.isNotBlank(pictureUploadRequest.getPicName())){
@@ -139,6 +146,8 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             picture.setEditTime(new Date());
         }
         boolean result = this.saveOrUpdate(picture);
+        // 可自行实现，如果是更新，可以清理图片资源
+//        this.clearPictureFile(oldPicture);
         ThrowUtils.throwIf(!result,ErrorCode.OPERATION_ERROR,"操作失败");
         return PictureVO.objToVo(picture);
     }
@@ -356,6 +365,29 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         }
         //上传图片
         return uploadCount;
+    }
+
+    /**
+     * 清理图片文件
+     * @param oldPicture
+     */
+    @Async  //异步执行
+    @Override
+    public void clearPictureFile(Picture oldPicture) {
+        //判断该图片是否被多条记录使用
+        String pictureUrl = oldPicture.getUrl();
+        long count = this.lambdaQuery()
+                .eq(Picture::getUrl, pictureUrl)
+                .count();
+        // 有不知一条记录用了该图片，不清理
+        if (count>1){
+            return;
+        }
+        // 删除缩略图
+        String thumbnailUrl = oldPicture.getThumbnailUrl();
+        if (StrUtil.isNotBlank(thumbnailUrl)){
+            cosManager.deleteObject(pictureUrl);
+        }
     }
 }
 
